@@ -1,0 +1,931 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CNN Vision Lab — See What Neural Networks See</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0a0a0f;
+    --surface: #13131a;
+    --surface2: #1c1c27;
+    --border: rgba(255,255,255,0.07);
+    --border-hover: rgba(255,255,255,0.15);
+    --accent: #7c6fff;
+    --accent2: #ff6b8a;
+    --accent3: #3ecfb3;
+    --text: #e8e8f0;
+    --muted: #6b6b80;
+    --mono: 'Space Mono', monospace;
+    --sans: 'DM Sans', sans-serif;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--sans);
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  /* Grid background */
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background-image:
+      linear-gradient(rgba(124,111,255,0.03) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(124,111,255,0.03) 1px, transparent 1px);
+    background-size: 40px 40px;
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  .container {
+    max-width: 1100px;
+    margin: 0 auto;
+    padding: 0 24px;
+    position: relative;
+    z-index: 1;
+  }
+
+  /* Header */
+  header {
+    padding: 48px 0 32px;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .header-inner {
+    display: flex;
+    align-items: flex-end;
+    justify-content: space-between;
+    gap: 24px;
+    flex-wrap: wrap;
+  }
+
+  .logo {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+
+  .logo-icon {
+    width: 40px;
+    height: 40px;
+    border: 1px solid var(--accent);
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .logo-icon svg { width: 22px; height: 22px; }
+
+  .logo-text {
+    font-family: var(--mono);
+    font-size: 13px;
+    color: var(--accent);
+    letter-spacing: 0.05em;
+  }
+
+  h1 {
+    font-family: var(--mono);
+    font-size: clamp(22px, 4vw, 36px);
+    font-weight: 700;
+    line-height: 1.1;
+    letter-spacing: -0.02em;
+  }
+
+  h1 span { color: var(--accent); }
+
+  .subtitle {
+    font-size: 14px;
+    color: var(--muted);
+    margin-top: 6px;
+    font-weight: 300;
+    letter-spacing: 0.01em;
+  }
+
+  /* Mode tabs */
+  .mode-tabs {
+    display: flex;
+    gap: 2px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 4px;
+    margin: 32px 0 24px;
+  }
+
+  .tab {
+    flex: 1;
+    padding: 10px 20px;
+    font-family: var(--mono);
+    font-size: 12px;
+    letter-spacing: 0.04em;
+    border: none;
+    background: transparent;
+    color: var(--muted);
+    cursor: pointer;
+    border-radius: 7px;
+    transition: all 0.2s;
+    text-align: center;
+  }
+
+  .tab.active {
+    background: var(--accent);
+    color: #fff;
+  }
+
+  .tab:hover:not(.active) {
+    color: var(--text);
+    background: var(--surface2);
+  }
+
+  /* Main layout */
+  .main-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 20px;
+    margin-bottom: 24px;
+  }
+
+  @media (max-width: 700px) {
+    .main-grid { grid-template-columns: 1fr; }
+  }
+
+  /* Cards */
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    overflow: hidden;
+  }
+
+  .card-header {
+    padding: 14px 18px;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+  }
+
+  .card-title {
+    font-family: var(--mono);
+    font-size: 11px;
+    letter-spacing: 0.08em;
+    color: var(--muted);
+    text-transform: uppercase;
+  }
+
+  .badge {
+    font-family: var(--mono);
+    font-size: 10px;
+    padding: 3px 8px;
+    border-radius: 4px;
+    letter-spacing: 0.04em;
+  }
+
+  .badge-purple { background: rgba(124,111,255,0.15); color: var(--accent); border: 1px solid rgba(124,111,255,0.3); }
+  .badge-pink   { background: rgba(255,107,138,0.12); color: var(--accent2); border: 1px solid rgba(255,107,138,0.3); }
+  .badge-teal   { background: rgba(62,207,179,0.12); color: var(--accent3); border: 1px solid rgba(62,207,179,0.3); }
+
+  .card-body {
+    padding: 18px;
+  }
+
+  /* Upload zone */
+  .upload-zone {
+    border: 1.5px dashed rgba(124,111,255,0.3);
+    border-radius: 10px;
+    padding: 36px 20px;
+    text-align: center;
+    cursor: pointer;
+    transition: all 0.2s;
+    background: rgba(124,111,255,0.03);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .upload-zone:hover, .upload-zone.drag { border-color: var(--accent); background: rgba(124,111,255,0.07); }
+  .upload-zone input { display: none; }
+
+  .upload-icon {
+    width: 40px;
+    height: 40px;
+    border: 1px solid rgba(124,111,255,0.3);
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-bottom: 4px;
+  }
+
+  .upload-icon svg { width: 20px; height: 20px; stroke: var(--accent); }
+  .upload-label { font-size: 13px; color: var(--text); font-weight: 500; }
+  .upload-hint { font-size: 11px; color: var(--muted); }
+
+  /* Canvas area */
+  .canvas-area {
+    background: #000;
+    border-radius: 10px;
+    overflow: hidden;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 220px;
+    position: relative;
+  }
+
+  .canvas-area canvas {
+    display: block;
+    max-width: 100%;
+    max-height: 320px;
+    image-rendering: pixelated;
+  }
+
+  .canvas-placeholder {
+    text-align: center;
+    padding: 40px 20px;
+  }
+
+  .canvas-placeholder p { font-size: 12px; color: var(--muted); font-family: var(--mono); }
+
+  /* Kernel selector */
+  .kernel-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
+    gap: 8px;
+    margin-bottom: 20px;
+  }
+
+  .kbtn {
+    padding: 10px 12px;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    color: var(--muted);
+    font-family: var(--mono);
+    font-size: 11px;
+    cursor: pointer;
+    transition: all 0.15s;
+    text-align: left;
+    line-height: 1.3;
+  }
+
+  .kbtn .kname { display: block; color: var(--text); font-size: 12px; margin-bottom: 2px; }
+  .kbtn .ktag  { font-size: 10px; color: var(--muted); letter-spacing: 0.03em; }
+
+  .kbtn:hover { border-color: var(--border-hover); color: var(--text); }
+  .kbtn.active { border-color: var(--accent); background: rgba(124,111,255,0.1); }
+  .kbtn.active .ktag { color: rgba(124,111,255,0.7); }
+
+  /* Pooling buttons */
+  .pool-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+    gap: 8px;
+    margin-bottom: 20px;
+  }
+
+  .pbtn {
+    padding: 12px 14px;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    color: var(--muted);
+    font-family: var(--mono);
+    font-size: 11px;
+    cursor: pointer;
+    transition: all 0.15s;
+    text-align: left;
+  }
+
+  .pbtn .pname { display: block; color: var(--text); font-size: 13px; margin-bottom: 3px; font-weight: 500; }
+  .pbtn:hover  { border-color: var(--border-hover); }
+  .pbtn.active { border-color: var(--accent3); background: rgba(62,207,179,0.08); }
+
+  /* Kernel matrix display */
+  .matrix-row {
+    display: flex;
+    gap: 16px;
+    align-items: flex-start;
+    flex-wrap: wrap;
+  }
+
+  .matrix {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 3px;
+    flex-shrink: 0;
+  }
+
+  .mcell {
+    width: 36px;
+    height: 36px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 5px;
+    font-family: var(--mono);
+    font-size: 12px;
+    font-weight: 700;
+    border: 1px solid transparent;
+  }
+
+  .mcell.pos { background: rgba(124,111,255,0.15); color: #a99fff; border-color: rgba(124,111,255,0.25); }
+  .mcell.neg { background: rgba(255,107,138,0.13); color: #ff9ab0; border-color: rgba(255,107,138,0.25); }
+  .mcell.zer { background: var(--surface2); color: var(--muted); }
+
+  .info-text {
+    flex: 1;
+    min-width: 140px;
+  }
+
+  .info-text .info-title {
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--accent);
+    letter-spacing: 0.05em;
+    margin-bottom: 6px;
+    text-transform: uppercase;
+  }
+
+  .info-text p {
+    font-size: 13px;
+    color: var(--muted);
+    line-height: 1.65;
+  }
+
+  /* Pool info */
+  .pool-info {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 14px 16px;
+    margin-bottom: 16px;
+  }
+
+  .pool-info .pi-title {
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--accent3);
+    letter-spacing: 0.05em;
+    margin-bottom: 6px;
+    text-transform: uppercase;
+  }
+
+  .pool-info p {
+    font-size: 13px;
+    color: var(--muted);
+    line-height: 1.65;
+  }
+
+  /* Size info strip */
+  .size-strip {
+    display: flex;
+    gap: 16px;
+    margin-top: 10px;
+    flex-wrap: wrap;
+  }
+
+  .size-item {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+  }
+
+  .size-label {
+    font-family: var(--mono);
+    font-size: 10px;
+    color: var(--muted);
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+  }
+
+  .size-val {
+    font-family: var(--mono);
+    font-size: 13px;
+    color: var(--text);
+    font-weight: 700;
+  }
+
+  /* Output label overlay */
+  .processing-overlay {
+    position: absolute;
+    inset: 0;
+    background: rgba(10,10,15,0.8);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 10;
+  }
+
+  .processing-overlay span {
+    font-family: var(--mono);
+    font-size: 12px;
+    color: var(--accent);
+    letter-spacing: 0.1em;
+    animation: pulse 1s ease-in-out infinite;
+  }
+
+  @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.4} }
+
+  /* Divider */
+  .divider {
+    height: 1px;
+    background: var(--border);
+    margin: 20px 0;
+  }
+
+  /* Section label */
+  .section-label {
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--muted);
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    margin-bottom: 12px;
+  }
+
+  /* Footer */
+  footer {
+    border-top: 1px solid var(--border);
+    padding: 24px 0;
+    margin-top: 40px;
+    text-align: center;
+  }
+
+  footer p {
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--muted);
+    letter-spacing: 0.05em;
+  }
+
+  footer a { color: var(--accent); text-decoration: none; }
+
+  /* Stride slider */
+  .slider-row {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 14px;
+  }
+
+  .slider-row label {
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--muted);
+    min-width: 80px;
+    letter-spacing: 0.03em;
+  }
+
+  .slider-row input[type=range] {
+    flex: 1;
+    -webkit-appearance: none;
+    height: 3px;
+    background: var(--surface2);
+    border-radius: 2px;
+    outline: none;
+  }
+
+  .slider-row input[type=range]::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    width: 14px;
+    height: 14px;
+    border-radius: 50%;
+    background: var(--accent);
+    cursor: pointer;
+  }
+
+  .slider-row .val {
+    font-family: var(--mono);
+    font-size: 12px;
+    color: var(--text);
+    min-width: 28px;
+    text-align: right;
+  }
+
+  /* Hidden */
+  .hidden { display: none !important; }
+</style>
+</head>
+<body>
+
+<div class="container">
+  <header>
+    <div class="header-inner">
+      <div>
+        <div class="logo" style="margin-bottom:12px">
+          <div class="logo-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="#7c6fff" stroke-width="1.5">
+              <rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/>
+              <rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/>
+            </svg>
+          </div>
+          <span class="logo-text">CNN_VISION_LAB</span>
+        </div>
+        <h1>See what a<br><span>neural network</span> sees</h1>
+        <p class="subtitle">Upload any image — apply convolution kernels & pooling — watch the transformations live</p>
+      </div>
+    </div>
+  </header>
+
+  <!-- Mode selector -->
+  <div class="mode-tabs">
+    <button class="tab active" id="tabKernel" onclick="switchMode('kernel')">Convolution Kernel</button>
+    <button class="tab" id="tabPool" onclick="switchMode('pool')">Pooling</button>
+  </div>
+
+  <!-- Image panels -->
+  <div class="main-grid">
+    <!-- Input -->
+    <div class="card">
+      <div class="card-header">
+        <span class="card-title">Input image</span>
+        <span class="badge badge-purple" id="inputSize">no image</span>
+      </div>
+      <div class="card-body">
+        <label class="upload-zone" id="dropZone">
+          <input type="file" id="fileInput" accept="image/*">
+          <div class="upload-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+              <polyline points="16 16 12 12 8 16"/><line x1="12" y1="12" x2="12" y2="21"/>
+              <path d="M20.39 18.39A5 5 0 0 0 18 9h-1.26A8 8 0 1 0 3 16.3"/>
+            </svg>
+          </div>
+          <span class="upload-label">Click or drag an image</span>
+          <span class="upload-hint">JPG, PNG, GIF, WebP</span>
+        </label>
+        <div class="canvas-area" id="origArea" style="display:none;margin-top:12px">
+          <canvas id="origCanvas"></canvas>
+        </div>
+      </div>
+    </div>
+
+    <!-- Output -->
+    <div class="card">
+      <div class="card-header">
+        <span class="card-title" id="outputLabel">Output — kernel applied</span>
+        <span class="badge badge-teal" id="outputSize">—</span>
+      </div>
+      <div class="card-body">
+        <div class="canvas-area" id="outArea">
+          <div class="canvas-placeholder">
+            <p>upload an image<br>to see the transformation</p>
+          </div>
+        </div>
+        <div class="size-strip" id="sizeStrip" style="display:none;margin-top:12px">
+          <div class="size-item">
+            <span class="size-label">Input shape</span>
+            <span class="size-val" id="origShape">—</span>
+          </div>
+          <div class="size-item">
+            <span class="size-label">Output shape</span>
+            <span class="size-val" id="outShape">—</span>
+          </div>
+          <div class="size-item">
+            <span class="size-label">Channels</span>
+            <span class="size-val" id="chanInfo">RGB × 3</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ======= KERNEL PANEL ======= -->
+  <div id="kernelPanel" class="card">
+    <div class="card-header">
+      <span class="card-title">Select kernel</span>
+      <span class="badge badge-purple">3 × 3 filter</span>
+    </div>
+    <div class="card-body">
+      <div class="kernel-grid" id="kernelBtns"></div>
+      <div class="divider"></div>
+      <div class="section-label">Kernel matrix</div>
+      <div class="matrix-row">
+        <div class="matrix" id="matrixDisplay"></div>
+        <div class="info-text">
+          <div class="info-title" id="infoTitle">—</div>
+          <p id="infoDesc">Select a kernel above to see what it detects and how it transforms your image.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ======= POOL PANEL ======= -->
+  <div id="poolPanel" class="card hidden">
+    <div class="card-header">
+      <span class="card-title">Select pooling type</span>
+      <span class="badge badge-teal">spatial downsampling</span>
+    </div>
+    <div class="card-body">
+      <div class="pool-grid" id="poolBtns"></div>
+      <div class="divider"></div>
+      <div class="slider-row">
+        <label>Window size</label>
+        <input type="range" id="poolSize" min="2" max="8" value="2" step="1" oninput="onPoolSlider()">
+        <span class="val" id="poolSizeVal">2×2</span>
+      </div>
+      <div class="slider-row">
+        <label>Stride</label>
+        <input type="range" id="strideSlider" min="1" max="8" value="2" step="1" oninput="onStrideSlider()">
+        <span class="val" id="strideVal">2</span>
+      </div>
+      <div class="pool-info">
+        <div class="pi-title" id="poolInfoTitle">Max Pooling</div>
+        <p id="poolInfoDesc">Takes the maximum value in each window. Retains the strongest feature activations. Most common in CNNs — a 2×2 pool halves both width and height.</p>
+      </div>
+    </div>
+  </div>
+
+  <footer>
+    <p>CNN Vision Lab &nbsp;·&nbsp; built for education &nbsp;·&nbsp; convolution applied in real-time on your device</p>
+  </footer>
+</div>
+
+<script>
+const KERNELS = [
+  { name:'Edge detect',      tag:'all directions',   color:'purple',
+    k:[[-1,-1,-1],[-1,8,-1],[-1,-1,-1]],
+    info:'Highlights all edges regardless of direction. The center is amplified ×8, every neighbour subtracted — flat regions become black, only boundaries survive.' },
+  { name:'Sharpen',          tag:'enhance detail',   color:'purple',
+    k:[[0,-1,0],[-1,5,-1],[0,-1,0]],
+    info:'Amplifies the center pixel and subtracts direct neighbours. Makes edges and fine details appear crisper without darkening flat regions.' },
+  { name:'Horizontal edges', tag:'Sobel Y',           color:'pink',
+    k:[[-1,-1,-1],[0,0,0],[1,1,1]],
+    info:'The Sobel Y filter. Detects horizontal edges — floors, horizons, table tops. Fires where pixel intensity changes from top to bottom.' },
+  { name:'Vertical edges',   tag:'Sobel X',           color:'pink',
+    k:[[-1,0,1],[-1,0,1],[-1,0,1]],
+    info:'The Sobel X filter. Detects vertical edges — walls, poles, building sides. One of the most common first-layer CNN features.' },
+  { name:'Diagonal ↘',       tag:'diagonal edge',     color:'pink',
+    k:[[-1,-1,0],[-1,0,1],[0,1,1]],
+    info:'Detects diagonal edges running from top-left to bottom-right. CNNs naturally combine multiple directional filters to detect edges at any angle.' },
+  { name:'Blur',             tag:'box blur',           color:'teal',
+    k:[[1,1,1],[1,1,1],[1,1,1]],
+    info:'Simple box blur — averages each pixel equally with all its neighbours. Softens the image. Used in CNNs to reduce noise before edge detection.' },
+  { name:'Gaussian blur',    tag:'weighted blur',      color:'teal',
+    k:[[1,2,1],[2,4,2],[1,2,1]],
+    info:'Weighted average where centre neighbours matter more than corners. Mimics natural optical blur. The most common smoothing filter in image processing.' },
+  { name:'Emboss',           tag:'3D effect',          color:'teal',
+    k:[[-2,-1,0],[-1,1,1],[0,1,2]],
+    info:'Subtracts one diagonal and amplifies the other, creating a 3D shadow-and-highlight illusion. Great for visualising how kernels detect directional gradients.' },
+  { name:'Bottom Sobel',     tag:'strong H-edge',      color:'pink',
+    k:[[-1,-2,-1],[0,0,0],[1,2,1]],
+    info:'Weighted horizontal edge detector. The centre column has 2× weight, making it more sensitive and precise than the basic horizontal edge kernel.' },
+  { name:'Identity',         tag:'no change',          color:'purple',
+    k:[[0,0,0],[0,1,0],[0,0,0]],
+    info:'The identity kernel — passes every pixel through unchanged. Useful baseline to verify the pipeline. Any kernel is a variation of this with adjusted weights.' },
+];
+
+const POOLS = [
+  { name:'Max Pooling',     tag:'keeps strongest signal',
+    info:'Takes the maximum value in each window. Retains the strongest feature activations. Most common in CNNs — very position-tolerant.',
+    fn: (vals) => Math.max(...vals) },
+  { name:'Average Pooling', tag:'smooth downsampling',
+    info:'Averages all values in each window. Gives a smoother result than max pooling. Used in global average pooling layers at the end of modern CNNs.',
+    fn: (vals) => vals.reduce((a,b)=>a+b,0)/vals.length },
+  { name:'Min Pooling',     tag:'keeps weakest signal',
+    info:'Takes the minimum value. Rarely used in practice but great for education — shows that pooling is just a function over a window.',
+    fn: (vals) => Math.min(...vals) },
+];
+
+let mode = 'kernel';
+let currentKernel = 0;
+let currentPool = 0;
+let poolWindowSize = 2;
+let poolStride = 2;
+let origImageData = null;
+let origW = 0, origH = 0;
+
+// DOM
+const fileInput   = document.getElementById('fileInput');
+const dropZone    = document.getElementById('dropZone');
+const origCanvas  = document.getElementById('origCanvas');
+const origArea    = document.getElementById('origArea');
+const outArea     = document.getElementById('outArea');
+const inputSize   = document.getElementById('inputSize');
+const outputSize  = document.getElementById('outputSize');
+const outputLabel = document.getElementById('outputLabel');
+const sizeStrip   = document.getElementById('sizeStrip');
+const origShape   = document.getElementById('origShape');
+const outShape    = document.getElementById('outShape');
+const chanInfo    = document.getElementById('chanInfo');
+
+// Build kernel buttons
+const kBtnContainer = document.getElementById('kernelBtns');
+KERNELS.forEach((k,i) => {
+  const b = document.createElement('button');
+  b.className = 'kbtn' + (i===0?' active':'');
+  b.innerHTML = `<span class="kname">${k.name}</span><span class="ktag">${k.tag}</span>`;
+  b.onclick = () => { currentKernel=i; selectKernel(i); };
+  kBtnContainer.appendChild(b);
+});
+
+// Build pool buttons
+const pBtnContainer = document.getElementById('poolBtns');
+POOLS.forEach((p,i) => {
+  const b = document.createElement('button');
+  b.className = 'pbtn' + (i===0?' active':'');
+  b.innerHTML = `<span class="pname">${p.name}</span><span>${p.tag}</span>`;
+  b.onclick = () => { currentPool=i; selectPool(i); };
+  pBtnContainer.appendChild(b);
+});
+
+function switchMode(m) {
+  mode = m;
+  document.getElementById('tabKernel').classList.toggle('active', m==='kernel');
+  document.getElementById('tabPool').classList.toggle('active', m==='pool');
+  document.getElementById('kernelPanel').classList.toggle('hidden', m!=='kernel');
+  document.getElementById('poolPanel').classList.toggle('hidden', m!=='pool');
+  if(m==='kernel') {
+    outputLabel.textContent = 'Output — kernel applied';
+    selectKernel(currentKernel);
+  } else {
+    outputLabel.textContent = 'Output — pooling applied';
+    selectPool(currentPool);
+  }
+}
+
+function selectKernel(i) {
+  currentKernel = i;
+  document.querySelectorAll('.kbtn').forEach((b,j) => b.classList.toggle('active', j===i));
+  renderMatrix(KERNELS[i].k);
+  document.getElementById('infoTitle').textContent = KERNELS[i].name;
+  document.getElementById('infoDesc').textContent  = KERNELS[i].info;
+  if(origImageData) applyKernelOp();
+}
+
+function selectPool(i) {
+  currentPool = i;
+  document.querySelectorAll('.pbtn').forEach((b,j) => b.classList.toggle('active', j===i));
+  document.getElementById('poolInfoTitle').textContent = POOLS[i].name;
+  document.getElementById('poolInfoDesc').textContent  = POOLS[i].info;
+  if(origImageData) applyPoolOp();
+}
+
+function onPoolSlider() {
+  poolWindowSize = parseInt(document.getElementById('poolSize').value);
+  document.getElementById('poolSizeVal').textContent = poolWindowSize+'×'+poolWindowSize;
+  if(origImageData) applyPoolOp();
+}
+
+function onStrideSlider() {
+  poolStride = parseInt(document.getElementById('strideSlider').value);
+  document.getElementById('strideVal').textContent = poolStride;
+  if(origImageData) applyPoolOp();
+}
+
+function renderMatrix(k) {
+  const el = document.getElementById('matrixDisplay');
+  el.innerHTML = '';
+  k.flat().forEach(v => {
+    const d = document.createElement('div');
+    d.className = 'mcell ' + (v>0?'pos':v<0?'neg':'zer');
+    d.textContent = v;
+    el.appendChild(d);
+  });
+}
+
+function loadImage(file) {
+  const reader = new FileReader();
+  reader.onload = e => {
+    const img = new Image();
+    img.onload = () => {
+      const maxS = 400;
+      let w=img.width, h=img.height;
+      const ratio = Math.min(maxS/w, maxS/h, 1);
+      w = Math.round(w*ratio);
+      h = Math.round(h*ratio);
+      origCanvas.width  = w; origCanvas.height = h;
+      const ctx = origCanvas.getContext('2d');
+      ctx.drawImage(img, 0, 0, w, h);
+      origImageData = ctx.getImageData(0, 0, w, h);
+      origW = w; origH = h;
+      dropZone.style.display = 'none';
+      origArea.style.display = 'flex';
+      inputSize.textContent = `${w} × ${h}`;
+      origShape.textContent = `${w}×${h}×3`;
+      if(mode==='kernel') applyKernelOp();
+      else applyPoolOp();
+    };
+    img.src = e.target.result;
+  };
+  reader.readAsDataURL(file);
+}
+
+fileInput.onchange = e => { if(e.target.files[0]) loadImage(e.target.files[0]); };
+
+dropZone.addEventListener('dragover', e => { e.preventDefault(); dropZone.classList.add('drag'); });
+dropZone.addEventListener('dragleave', () => dropZone.classList.remove('drag'));
+dropZone.addEventListener('drop', e => {
+  e.preventDefault(); dropZone.classList.remove('drag');
+  if(e.dataTransfer.files[0]) loadImage(e.dataTransfer.files[0]);
+});
+
+function showOutput(outCanvas, outW, outH) {
+  outArea.innerHTML = '';
+  outCanvas.style.maxWidth  = '100%';
+  outCanvas.style.maxHeight = '320px';
+  outCanvas.style.imageRendering = 'pixelated';
+  outArea.appendChild(outCanvas);
+  outputSize.textContent = `${outW} × ${outH}`;
+  outShape.textContent   = `${outW}×${outH}×3`;
+  sizeStrip.style.display = 'flex';
+}
+
+function applyKernelOp() {
+  if(!origImageData) return;
+  const k = KERNELS[currentKernel].k;
+  const {width:w, height:h, data:src} = origImageData;
+  const name = KERNELS[currentKernel].name;
+
+  const isBlur    = name === 'Blur';
+  const isGauss   = name === 'Gaussian blur';
+  const divisor   = isBlur ? 9 : isGauss ? 16 : 1;
+
+  const out = new Uint8ClampedArray(src.length);
+
+  for(let y=0; y<h; y++) {
+    for(let x=0; x<w; x++) {
+      let r=0, g=0, b=0;
+      for(let ky=0; ky<3; ky++) {
+        for(let kx=0; kx<3; kx++) {
+          const py = Math.min(h-1, Math.max(0, y+ky-1));
+          const px = Math.min(w-1, Math.max(0, x+kx-1));
+          const idx = (py*w+px)*4;
+          const wt  = k[ky][kx];
+          r += src[idx]*wt; g += src[idx+1]*wt; b += src[idx+2]*wt;
+        }
+      }
+      const idx = (y*w+x)*4;
+      out[idx]   = Math.min(255, Math.max(0, Math.round(r/divisor)));
+      out[idx+1] = Math.min(255, Math.max(0, Math.round(g/divisor)));
+      out[idx+2] = Math.min(255, Math.max(0, Math.round(b/divisor)));
+      out[idx+3] = 255;
+    }
+  }
+
+  const c = document.createElement('canvas');
+  c.width=w; c.height=h;
+  c.getContext('2d').putImageData(new ImageData(out, w, h), 0, 0);
+  showOutput(c, w, h);
+}
+
+function applyPoolOp() {
+  if(!origImageData) return;
+  const {width:w, height:h, data:src} = origImageData;
+  const poolFn   = POOLS[currentPool].fn;
+  const ws       = poolWindowSize;
+  const stride   = poolStride;
+
+  const outW = Math.floor((w - ws) / stride) + 1;
+  const outH = Math.floor((h - ws) / stride) + 1;
+
+  if(outW < 1 || outH < 1) return;
+
+  const out = new Uint8ClampedArray(outW * outH * 4);
+
+  for(let y=0; y<outH; y++) {
+    for(let x=0; x<outW; x++) {
+      const rs=[], gs=[], bs=[];
+      for(let wy=0; wy<ws; wy++) {
+        for(let wx=0; wx<ws; wx++) {
+          const py = y*stride + wy;
+          const px = x*stride + wx;
+          if(py<h && px<w) {
+            const idx = (py*w+px)*4;
+            rs.push(src[idx]); gs.push(src[idx+1]); bs.push(src[idx+2]);
+          }
+        }
+      }
+      const oi = (y*outW+x)*4;
+      out[oi]   = Math.round(poolFn(rs));
+      out[oi+1] = Math.round(poolFn(gs));
+      out[oi+2] = Math.round(poolFn(bs));
+      out[oi+3] = 255;
+    }
+  }
+
+  const c = document.createElement('canvas');
+  c.width=outW; c.height=outH;
+  c.getContext('2d').putImageData(new ImageData(out, outW, outH), 0, 0);
+  showOutput(c, outW, outH);
+}
+
+// Init
+selectKernel(0);
+renderMatrix(KERNELS[0].k);
+</script>
+</body>
+</html>
