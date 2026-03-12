@@ -572,6 +572,9 @@
         <div class="canvas-area" id="origArea" style="display:none;margin-top:12px">
           <canvas id="origCanvas"></canvas>
         </div>
+        <button id="changeBtn" onclick="document.getElementById('fileInput').click()" style="display:none;margin-top:10px;width:100%;padding:9px;background:transparent;border:1px dashed rgba(124,111,255,0.35);border-radius:8px;color:#7c6fff;font-family:'Space Mono',monospace;font-size:11px;letter-spacing:0.05em;cursor:pointer;">
+          upload different image
+        </button>
       </div>
     </div>
 
@@ -652,7 +655,7 @@
   </div>
 
   <footer>
-    <p>CNN Vision Lab &nbsp;· Built by Md Ratul Bhuiyan &nbsp;·&nbsp; built for education &nbsp;·&nbsp; convolution applied in real-time on your device</p>
+    <p>CNN Vision Lab &nbsp;·&nbsp; built for education &nbsp;·&nbsp; convolution applied in real-time on your device</p>
   </footer>
 </div>
 
@@ -816,6 +819,7 @@ function loadImage(file) {
       origW = w; origH = h;
       dropZone.style.display = 'none';
       origArea.style.display = 'flex';
+      document.getElementById('changeBtn').style.display = 'inline-block';
       inputSize.textContent = `${w} × ${h}`;
       origShape.textContent = `${w}×${h}×3`;
       if(mode==='kernel') applyKernelOp();
@@ -826,7 +830,7 @@ function loadImage(file) {
   reader.readAsDataURL(file);
 }
 
-fileInput.onchange = e => { if(e.target.files[0]) loadImage(e.target.files[0]); };
+fileInput.onchange = e => { if(e.target.files[0]) { loadImage(e.target.files[0]); e.target.value = ''; } };
 
 dropZone.addEventListener('dragover', e => { e.preventDefault(); dropZone.classList.add('drag'); });
 dropZone.addEventListener('dragleave', () => dropZone.classList.remove('drag'));
